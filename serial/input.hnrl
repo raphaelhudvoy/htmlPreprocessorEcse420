@@ -1,8 +1,8 @@
 #content {
-  .left.column {
+  .left {
     h2 Welcome to our site
   }
-  .right.column {
+  .right {
   	.test1 {
   		.test2 {
   		 	.test3 {

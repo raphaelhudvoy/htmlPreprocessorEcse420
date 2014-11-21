@@ -1,55 +1,80 @@
-#include <stdio.h>   /* required for file operations */
+#include <stdio.h>  
+#include <stdlib.h>
+#include <string.h>
 
-FILE *input;            /* declare the file pointer */
+FILE *input; 
+const int STRING_LENGTH = 100;         
 
+typedef struct node {
 
-int main() {
+	char *class;
+	char *element;
+	char *id;
+	struct node *first_child;
+	struct node *next_sibling;
 
-	FILE *ptr_file;
-    char buf[1000];
+		
+} node;
 
-	ptr_file =fopen("input.hnrl", "r");
+node *root = NULL;
 
-	if (!ptr_file) 
-		return 1;
+void parseNode (struct node *node, char *string) {
 
-	int newComponent = 1;
-	char output[1000];
-	int count = 0;
+	// printf("-> %s\n", string);
+	// strcpy(node->id, string);
 
-	while (fscanf(ptr_file, "%s", buf) !=EOF) {
-
-		switch (buf[0]) {
+	switch (string[0]) {
 			case '#' :
-				
+				node->id = ++string;
+				node->class = NULL;
+				node->element = "div\0";
 
 			break;
 
 			case '.' :
+				node->id = NULL;
+				node->class = ++string;
+				node->element = "div\0";
 			break;
 
 			case '{':
+
 			break;
 
 			case '}':
 			break;
 
 			default :
-				// if (buf != ' ') {
-
-				// 	if (newComponent == 1) {
-				// 		output[count] = '<';
-				// 		count++;
-				// 		output[count] = buf;
-
-				// 	}
-
-				// }
+				node->id = NULL;
+				node->class = NULL;
+				node->element = "div\0";
 		}
 
+}
 
-       printf("%s\n", buf);
-       printf("%c\n", buf[0]);
+
+int main() {
+
+	FILE *ptr_file;
+    char buf[STRING_LENGTH];
+	ptr_file =fopen("input.hnrl", "r");
+
+	if (!ptr_file) 
+		return 1;
+
+
+
+	while (fscanf(ptr_file, "%s", buf) !=EOF) {
+
+		//printf("%s\n", buf );
+
+
+		struct node new_node;
+		parseNode(&new_node, buf);
+
+		printf("%s, id is %s and class is %s\n", new_node.element, new_node.id, new_node.class);
+
+
 	}
 
 
@@ -58,4 +83,4 @@ int main() {
 
 	return  0;
 
-}
+};
