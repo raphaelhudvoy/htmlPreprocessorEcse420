@@ -40,33 +40,63 @@ void parseNode (struct node *node, char *string) {
 		}
 }
 
+void printNode (node *current_node, int level) {
+
+	int i;
+
+	// printf("parent address is %p\n", current_node->parent);
+	// printf("node address is %p\n", current_node);
+
+	// Indentation
+	for (i = 0; i < level; i++) {
+		printf("\t");
+	}
+
+	//Node
+	printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+	// printf("child address is %p\n", current_node->first_child );
+	// printf("sibling address is %p\n", current_node->right_sibling );
+
+}
+
 void printTree (node *root) {
 
 	printf("root address is %p\n", root);
-	printf("root child class is %p\n", root->first_child);
+	printf("root parent address %p\n", root->parent);
 
-	int level = 0, i;
-	node *current_node = root;
+	int level = 0, i = 0;
+	node *current_node = root, temp;
+	
+	printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
 
-	while (1) {
-		if (current_node != NULL) {
+	while (i < 50) {
 
-			// print indentation
-			for (i = 0; i < level; i++) {
-				printf("\t");
-			}
 
-			printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-
+		if (current_node->first_child != NULL) {
 			current_node = current_node->first_child;
-			level++;
+			printNode(current_node, ++level);
+		}
 
+		else if (current_node->right_sibling != NULL) {
+			current_node = current_node->right_sibling;
+			printNode(current_node, level);
+		}
 
+		else if (current_node->parent == NULL) {
+			break;
 		}
 
 		else {
-			break;
+			current_node = current_node->parent;
+			current_node->first_child = NULL;
+			level--;
+			printNode(current_node, level);
 		}
+
+		// printf("%p\n", current_node->parent);
+
+
+		i++;
 	}
 }
 
@@ -94,21 +124,24 @@ int main() {
 
 		switch (buf[0]) {
 			case '{': 
-				parent_node = current_node;
 				current_node->first_child = malloc(sizeof(node));
+				current_node->first_child->parent = current_node;
+				
 				current_node = current_node->first_child;
 
 			break;
 
 			case '}':
 
-				if (parent_node != NULL)
-					current_node = parent_node;
+
+				if (current_node->parent != NULL)
+					current_node = current_node->parent;
 				// printf("end of children\n");
 
 				if (buf[1] == ',') 
 				{
 					current_node->right_sibling = malloc(sizeof(node));
+					current_node->right_sibling->parent = current_node->parent;
 					current_node = current_node->right_sibling;
 					// printf("next is sibling\n");
 				}
@@ -126,11 +159,11 @@ int main() {
 				parseNode(new_node, buf);
 				memcpy(current_node, new_node, sizeof(node));
 
-				if (parent_node != NULL) {
-					new_node->parent = parent_node;
-				}
+				// if (parent_node != NULL) {
+				// 	current_node->parent = parent_node;
+				// }
 
-				printf("%s, id is %s and class is %s\n", new_node->element, new_node->id, new_node->class);
+				printf("%s, id is %s and class is %s with parent address of %p\n", current_node->element, current_node->id, current_node->class, current_node->parent);
 		}
 	}
 
