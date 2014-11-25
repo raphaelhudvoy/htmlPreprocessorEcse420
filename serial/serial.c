@@ -3,61 +3,85 @@
 #include <string.h>
 
 FILE *input; 
-const int STRING_LENGTH = 100;         
 
 typedef struct node {
 
-	char *class;
-	char *element;
-	char *id;
+	char class[50];
+	char element[50];
+	char id[50];
+	char content[50];
+	struct node *parent;
 	struct node *first_child;
-	struct node *next_sibling;
-
+	struct node *right_sibling;
 		
 } node;
 
-node *root = NULL;
-
 void parseNode (struct node *node, char *string) {
 
-	// printf("-> %s\n", string);
-	// strcpy(node->id, string);
+	//Initialize pointer
+	node->parent = NULL;
+	node->first_child = NULL;
+	node->right_sibling = NULL;
 
 	switch (string[0]) {
 			case '#' :
-				node->id = ++string;
-				node->class = NULL;
-				node->element = "div\0";
+				strcpy(node->id, ++string);
+				strcpy(node->element, "div");
 
 			break;
 
 			case '.' :
-				node->id = NULL;
-				node->class = ++string;
-				node->element = "div\0";
-			break;
-
-			case '{':
-
-			break;
-
-			case '}':
+				strcpy(node->class, ++string);
+				strcpy(node->element, "div");
 			break;
 
 			default :
-				node->id = NULL;
-				node->class = NULL;
-				node->element = "div\0";
+				strcpy(node->element, string);
+		}
+}
+
+void printTree (node *root) {
+
+	printf("root address is %p\n", root);
+	printf("root child class is %p\n", root->first_child);
+
+	int level = 0, i;
+	node *current_node = root;
+
+	while (1) {
+		if (current_node != NULL) {
+
+			// print indentation
+			for (i = 0; i < level; i++) {
+				printf("\t");
+			}
+
+			printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+
+			current_node = current_node->first_child;
+			level++;
+
+
 		}
 
+		else {
+			break;
+		}
+	}
 }
 
 
 int main() {
 
 	FILE *ptr_file;
-    char buf[STRING_LENGTH];
+    char buf[100];
 	ptr_file =fopen("input.hnrl", "r");
+
+	node *root = malloc(sizeof(node));
+	node *current_node = root;
+	node *parent_node = NULL;
+
+
 
 	if (!ptr_file) 
 		return 1;
@@ -66,19 +90,54 @@ int main() {
 
 	while (fscanf(ptr_file, "%s", buf) !=EOF) {
 
-		//printf("%s\n", buf );
+		node *new_node;
+
+		switch (buf[0]) {
+			case '{': 
+				parent_node = current_node;
+				current_node->first_child = malloc(sizeof(node));
+				current_node = current_node->first_child;
+
+			break;
+
+			case '}':
+
+				if (parent_node != NULL)
+					current_node = parent_node;
+				// printf("end of children\n");
+
+				if (buf[1] == ',') 
+				{
+					current_node->right_sibling = malloc(sizeof(node));
+					current_node = current_node->right_sibling;
+					// printf("next is sibling\n");
+				}
+
+			break;
+
+			// case '(':
 
 
-		struct node new_node;
-		parseNode(&new_node, buf);
-
-		printf("%s, id is %s and class is %s\n", new_node.element, new_node.id, new_node.class);
+			default : 
 
 
+				new_node = malloc(sizeof(node));
+
+				parseNode(new_node, buf);
+				memcpy(current_node, new_node, sizeof(node));
+
+				if (parent_node != NULL) {
+					new_node->parent = parent_node;
+				}
+
+				printf("%s, id is %s and class is %s\n", new_node->element, new_node->id, new_node->class);
+		}
 	}
 
 
     fclose(ptr_file);
+
+    printTree(root);
 
 
 	return  0;
