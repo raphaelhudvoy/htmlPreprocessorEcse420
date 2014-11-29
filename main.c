@@ -1,8 +1,8 @@
 #include <stdio.h>  
 #include <stdlib.h>
 #include <string.h>
+#include <mpi.h>
 
-FILE *input; 
 
 typedef struct node {
 
@@ -12,6 +12,12 @@ typedef struct node {
 	struct node *parent;
 	struct node *first_child;
 	struct node *right_sibling;
+
+	int initialized;
+
+	//parallel variable
+	int count;
+	int seen;
 		
 } node;
 
@@ -21,6 +27,7 @@ void parseNode (struct node *node, struct node *parent, char *string) {
 	node->parent = parent;
 	node->first_child = NULL;
 	node->right_sibling = NULL;
+	node->initialized = 1;
 
 	switch (string[0]) {
 			case '#' :
@@ -77,6 +84,15 @@ void printTree (node *root) {
 
 	do {
 
+		//removing unitialize node
+		// if (current_node->first_child->initialized == 0) {
+		// 	free(current_node->first_child);
+		// } 
+
+		// if (current_node->right_sibling->initialized == 0) {
+		// 	current_node->right_sibling = NULL;
+		// }
+
 		if (current_node->first_child != NULL) {
 			current_node = current_node->first_child;
 			printBeginningNode(current_node, ++level);
@@ -96,20 +112,13 @@ void printTree (node *root) {
 	} while (current_node->parent != NULL);
 }
 
-
-int main() {
+void buildTree (struct node *root) {
 
 	FILE *ptr_file;
     char buf[100];
-	ptr_file =fopen("input.hnrl", "r");
+	ptr_file =fopen("input-medium.hnrl", "r");
 
-	node *root = malloc(sizeof(node));
 	node *current_node = root;
-
-	if (!ptr_file) 
-		return 1;
-
-
 
 	while (fscanf(ptr_file, "%s", buf) !=EOF) {
 
@@ -119,6 +128,7 @@ int main() {
 			case '{': 
 				current_node->first_child = malloc(sizeof(node));
 				current_node->first_child->parent = current_node;
+				current_node->first_child->initialized = 0;
 
 				current_node = current_node->first_child;
 
@@ -126,23 +136,16 @@ int main() {
 
 			case '}':
 
-
-				// if (current_node->parent != NULL)
-					current_node = current_node->parent;
-				// printf("end of children\n");
+				current_node = current_node->parent;
 
 				if (buf[1] == ',') 
 				{
 					current_node->right_sibling = malloc(sizeof(node));
 					current_node->right_sibling->parent = current_node->parent;
 					current_node = current_node->right_sibling;
-					// printf("next is sibling\n");
 				}
 
 			break;
-
-			// case '(':
-
 
 			default : 
 
@@ -151,23 +154,67 @@ int main() {
 
 				parseNode(new_node, current_node->parent, buf);
 				memcpy(current_node, new_node, sizeof(node));
-
-				// if (parent_node != NULL) {
-				// 	current_node->parent = parent_node;
-				// }
-
-				// printf("%s, id is %s and class is %s with node address of %p\n", current_node->element, current_node->id, current_node->class, current_node);
-				// printf("parent address is %p\n", current_node->parent );
-				// printf("child address is %p\n", current_node->first_child );
-				// printf("sibling address is %p\n", current_node->right_sibling );
 		}
 	}
 
+	fclose(ptr_file);
+}
 
-    fclose(ptr_file);
 
-    printTree(root);
+void computeOutputInParallel (struct node *root, int rank, int size) {
 
+	node *current_node = root;
+
+	if (rank == 0) {
+		printTree(root);
+
+
+		while(1) {
+			current_node->count = 1;
+
+			// move down to the last child
+			if (current_node->first_child != NULL && current_node->first_child->initialized == 1) {
+				current_node = current_node->first_child;
+			
+			} else {
+				current_node->count = 1;
+				current_node->parent->count++;
+
+				// move to right sibling
+				// if (current_node->right_sibling != NULL && current_node->right_sibling->initialized == 1) {
+				// 	current_node == current_node->right_sibling;
+				// }
+			}
+
+		}
+	}
+
+}
+
+int main(int argc, char **argv) {
+
+	node *root = malloc(sizeof(node));
+	buildTree(root);
+
+	int parallel = 1;
+
+	if (parallel == 1) {
+
+		int rank, size;		
+		MPI_Init(&argc, &argv);
+		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		MPI_Comm_size(MPI_COMM_WORLD, &size);
+		MPI_Status status;
+
+		computeOutputInParallel(root, rank, size);
+
+
+		MPI_Finalize();
+	
+
+	} else {
+		// serial version here
+	}
 
 	return  0;
 
