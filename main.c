@@ -1,7 +1,10 @@
 #include <stdio.h>  
 #include <stdlib.h>
 #include <string.h>
-#include <mpi.h>
+#include <omp.h>
+
+//compile with -> /usr/local/bin/gcc -fopenmp main.c -o test
+int printCount = 0;
 
 
 typedef struct node {
@@ -13,21 +16,27 @@ typedef struct node {
 	struct node *first_child;
 	struct node *right_sibling;
 
-	int initialized;
 
 	//parallel variable
 	int count;
-	int seen;
+	int numberOfChild;
+
+	//print variable
+	int printed;
 		
 } node;
 
 void parseNode (struct node *node, struct node *parent, char *string) {
 
+	//Init flags
+	node->count = 0;
+	node->numberOfChild = 0;
+	node->printed = 0;
+
 	//Initialize pointer
 	node->parent = parent;
 	node->first_child = NULL;
 	node->right_sibling = NULL;
-	node->initialized = 1;
 
 	switch (string[0]) {
 			case '#' :
@@ -74,26 +83,22 @@ void printEndNode (node *current_node, int level) {
 
 void printTree (node *root) {
 
+	printCount++;
+
 	printf("root address is %p\n", root);
 	printf("root parent address %p\n", root->parent);
 
 	int level = 0, i = 0;
 	node *current_node = root, temp;
+	node *parent_node = current_node->parent;
+
+	current_node->parent = NULL;
 	
 	printBeginningNode(current_node, level);
 
 	do {
 
-		//removing unitialize node
-		// if (current_node->first_child->initialized == 0) {
-		// 	free(current_node->first_child);
-		// } 
-
-		// if (current_node->right_sibling->initialized == 0) {
-		// 	current_node->right_sibling = NULL;
-		// }
-
-		if (current_node->first_child != NULL) {
+		if (current_node->first_child != NULL && current_node->first_child->printed != printCount) {
 			current_node = current_node->first_child;
 			printBeginningNode(current_node, ++level);
 		}
@@ -104,12 +109,13 @@ void printTree (node *root) {
 		}
 		else {
 			current_node = current_node->parent;
-			current_node->first_child = NULL;
-			level--;
-			printEndNode(current_node, level);
+			current_node->first_child->printed = printCount;
+			printEndNode(current_node, --level);
 		}
 
 	} while (current_node->parent != NULL);
+
+	current_node->parent = parent_node;
 }
 
 void buildTree (struct node *root) {
@@ -128,7 +134,6 @@ void buildTree (struct node *root) {
 			case '{': 
 				current_node->first_child = malloc(sizeof(node));
 				current_node->first_child->parent = current_node;
-				current_node->first_child->initialized = 0;
 
 				current_node = current_node->first_child;
 
@@ -161,33 +166,74 @@ void buildTree (struct node *root) {
 }
 
 
-void computeOutputInParallel (struct node *root, int rank, int size) {
+void computeOutputInParallel (struct node *root) {
 
 	node *current_node = root;
+	int workByProcessor = 4;
+	int threadID;
 
-	if (rank == 0) {
-		printTree(root);
+	// printTree(root);
+
+	printf("starting with node\n");
+	printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+	printf("\n");
+
+	while(1) {
 
 
-		while(1) {
-			current_node->count = 1;
+		// move down to the last child
+		if (current_node->first_child != NULL && current_node->first_child->count == 0) {
+			current_node = current_node->first_child;
+		
+		} else { 
 
-			// move down to the last child
-			if (current_node->first_child != NULL && current_node->first_child->initialized == 1) {
-				current_node = current_node->first_child;
-			
-			} else {
+			if (current_node->count == 0) //means it is a leaf
 				current_node->count = 1;
-				current_node->parent->count++;
 
-				// move to right sibling
-				// if (current_node->right_sibling != NULL && current_node->right_sibling->initialized == 1) {
-				// 	current_node == current_node->right_sibling;
-				// }
+			current_node->parent->count += current_node->count;
+			current_node->parent->numberOfChild++;
+
+			// move to right sibling
+			if (current_node->right_sibling != NULL ) {
+				printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+				current_node = current_node->right_sibling;
+			}
+
+			// move up to parent
+			else {
+				current_node = current_node->parent;
+
+				// current node is now the parent
+				current_node->count++; //adding 1 for parent node
+
+				if (current_node->count >= workByProcessor || current_node->parent == NULL) {
+					//need to parallelize the tree
+					printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+					printf("count is %d\n", current_node->count );
+					printf("number of child is %d\n", current_node->numberOfChild );
+					printf("parent is %p\n", current_node->parent );
+					printf("right_sibling is %p\n", current_node->right_sibling );
+
+					#pragma omp parallel num_threads(current_node->numberOfChild)
+					 {
+					   // Get thread number
+					   threadID = omp_get_thread_num();
+					   printf("\tSection 1 - I'm thread %d\n", threadID);
+					 }
+
+					current_node->count = 1;
+					printTree(current_node);
+
+					if (current_node->parent == NULL)
+						break;
+				}
+
 			}
 
 		}
+
 	}
+	
 
 }
 
@@ -196,20 +242,16 @@ int main(int argc, char **argv) {
 	node *root = malloc(sizeof(node));
 	buildTree(root);
 
+	printf("########### final tree ###########\n");
+	printTree(root);
+	printf("==================================\n\n");
+
 	int parallel = 1;
 
 	if (parallel == 1) {
 
-		int rank, size;		
-		MPI_Init(&argc, &argv);
-		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-		MPI_Comm_size(MPI_COMM_WORLD, &size);
-		MPI_Status status;
 
-		computeOutputInParallel(root, rank, size);
-
-
-		MPI_Finalize();
+		computeOutputInParallel(root);
 	
 
 	} else {
