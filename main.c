@@ -20,6 +20,7 @@ typedef struct node {
 	//parallel variable
 	int count;
 	int numberOfChild;
+	char *content;
 
 	//print variable
 	int printed;
@@ -37,6 +38,7 @@ void parseNode (struct node *node, struct node *parent, char *string) {
 	node->parent = parent;
 	node->first_child = NULL;
 	node->right_sibling = NULL;
+	node->content = NULL;
 
 	switch (string[0]) {
 			case '#' :
@@ -69,6 +71,35 @@ void printBeginningNode (node *current_node, int level) {
 
 }
 
+void computeBeginningNode (char* result, node *current_node, int level) {
+	char element[100];
+	int i = 0;
+	node *child = current_node->first_child;
+	result[0] = '\0';
+
+	for (i = 0; i < level; i++) {
+		strcat(result, "\t");
+	}
+
+	sprintf(element, "<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+	strcat(result, element);
+
+	// Adding children content
+	while (child != NULL) {
+		strcat(result, child->content);
+		child = child->right_sibling;
+	}
+
+	for (i = 0; i < level; i++) {
+		strcat(result, "\t");
+	}
+
+	sprintf(element, "</%s>\n", current_node->element);
+	strcat(result, element);
+
+
+} 
+
 void printEndNode (node *current_node, int level) {
 
 	int i;
@@ -79,6 +110,60 @@ void printEndNode (node *current_node, int level) {
 	}
 
 	printf("</%s>\n", current_node->element);
+}
+
+void computeNodeToHtml (node *root, int level) {
+
+	char parsedString[100000] = {};
+
+	int i = 0;
+	node *current_node = root;
+	node *parent_node = current_node->parent;
+	int length = 0;
+
+	root->parent = NULL;
+	
+	do {
+
+		if (current_node->first_child != NULL && current_node->first_child->content == NULL) {
+			current_node = current_node->first_child;
+			level++;
+		}
+
+		else if (current_node->right_sibling != NULL) {
+			
+			// compute current node before moving to its neighbor
+			computeBeginningNode(parsedString, current_node, level);
+			current_node->content = malloc(strlen(parsedString) + 1);
+			strcpy(current_node->content, parsedString);
+
+			// moving to the neighbor
+			current_node = current_node->right_sibling;
+
+		}
+		else {
+
+			// compute current node before moving to its parent
+			computeBeginningNode(parsedString, current_node, level);
+			current_node->content = malloc(strlen(parsedString) + 1);
+			strcpy(current_node->content, parsedString);
+
+
+			current_node = current_node->parent;
+			level--;
+		}
+
+	} while (current_node->parent != NULL);
+
+
+
+	// compute the root
+	computeBeginningNode(parsedString, current_node, level);
+	current_node->content = malloc(strlen(parsedString) + 1);
+	strcpy(current_node->content, parsedString);
+	
+
+	root->parent = parent_node;
 }
 
 void printTree (node *root) {
@@ -169,14 +254,9 @@ void buildTree (struct node *root) {
 void computeOutputInParallel (struct node *root) {
 
 	node *current_node = root;
-	int workByProcessor = 4;
-	int threadID;
-
-	// printTree(root);
-
-	printf("starting with node\n");
-	printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-	printf("\n");
+	int workByProcessor = 8;
+	int i, level = 0;
+	char parsedString[10000];
 
 	while(1) {
 
@@ -184,6 +264,7 @@ void computeOutputInParallel (struct node *root) {
 		// move down to the last child
 		if (current_node->first_child != NULL && current_node->first_child->count == 0) {
 			current_node = current_node->first_child;
+			level++;
 		
 		} else { 
 
@@ -195,44 +276,65 @@ void computeOutputInParallel (struct node *root) {
 
 			// move to right sibling
 			if (current_node->right_sibling != NULL ) {
-				printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
 				current_node = current_node->right_sibling;
 			}
 
 			// move up to parent
 			else {
 				current_node = current_node->parent;
+				level--;
 
 				// current node is now the parent
 				current_node->count++; //adding 1 for parent node
 
 				if (current_node->count >= workByProcessor || current_node->parent == NULL) {
+					
 					//need to parallelize the tree
-					printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-					printf("count is %d\n", current_node->count );
-					printf("number of child is %d\n", current_node->numberOfChild );
-					printf("parent is %p\n", current_node->parent );
-					printf("right_sibling is %p\n", current_node->right_sibling );
-
 					#pragma omp parallel num_threads(current_node->numberOfChild)
-					 {
-					   // Get thread number
-					   threadID = omp_get_thread_num();
-					   printf("\tSection 1 - I'm thread %d\n", threadID);
-					 }
+					{
+
+						node *current_child = current_node->first_child;
+						int threadID = omp_get_thread_num();
+
+						// selecting the right child for each process
+						for (i = 0; i < threadID; i++) {
+							current_child = current_child->right_sibling; 
+						}
+						
+
+						if (current_child != NULL) {
+							// Get thread number
+							// printf("\t<%s id=\"%s\" class=\"%s\">\n", current_child->element, current_child->id, current_child->class);
+							if (current_child->content == NULL)
+								computeNodeToHtml(current_child, level + 1);
+							// printf("%s\n", current_child->content);
+						}
+
+						else 
+							printf("Error: child is null\n");
+
+					}
+					
+					// Compute parent node
+					computeBeginningNode(parsedString, current_node, level);
+					current_node->content = malloc(strlen(parsedString) + 1);
+					strcpy(current_node->content, parsedString);
 
 					current_node->count = 1;
-					printTree(current_node);
+					// printTree(current_node);
+					// printf("%s\n", current_node->content);
 
-					if (current_node->parent == NULL)
+					if (current_node->parent == NULL) {
 						break;
+					}
 				}
 
 			}
 
 		}
-
 	}
+
+	printf("%s\n", current_node->content);
 	
 
 }
@@ -241,10 +343,6 @@ int main(int argc, char **argv) {
 
 	node *root = malloc(sizeof(node));
 	buildTree(root);
-
-	printf("########### final tree ###########\n");
-	printTree(root);
-	printf("==================================\n\n");
 
 	int parallel = 1;
 
