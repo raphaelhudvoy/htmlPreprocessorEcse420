@@ -54,6 +54,7 @@ void printByDepth(int depth, int branch,int cur_depth) {
 	tabs[cur_depth] = '\0';
 	if(depth==cur_depth) {
 		fprintf(input,"%s .inner-class\n",tabs);
+		fprintf(output,"%s <div class=\"inner-class\"> \n %s</div> ", tabs,tabs);
 		return;
 	}
 
