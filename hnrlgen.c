@@ -47,13 +47,15 @@ int main ( int argc, char *argv[] )
 void printByDepth(int depth, int branch,int cur_depth) {
 	int randomBranching = rand()%branch +1 ;
 	
-	if(depth==cur_depth)
-		return;
 
-	char *tabs = malloc(sizeof(char)*cur_depth);
+	char *tabs = malloc(sizeof(char)*(cur_depth+1));
 	for(int k=0; k<cur_depth;k++)
 		tabs[k]='\t';
-
+	tabs[cur_depth] = '\0';
+	if(depth==cur_depth) {
+		fprintf(input,"%s .inner-class\n",tabs);
+		return;
+	}
 
 	for(int i=0; i<randomBranching; i++) {
 		
@@ -67,7 +69,7 @@ void printByDepth(int depth, int branch,int cur_depth) {
 		}
 		else {
 
-			sprintf(attr, "id=testid_%d", cur_id);
+			 sprintf(attr, "id=testid_%d", cur_id);
 			 sprintf(attr_input,"#testid_%d", cur_id);
 			 cur_id++;
 		}
