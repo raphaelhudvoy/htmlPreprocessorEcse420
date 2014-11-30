@@ -207,7 +207,7 @@ void buildTree (struct node *root) {
 
 	FILE *ptr_file;
     char buf[100];
-	ptr_file =fopen("input-medium.hnrl", "r");
+	ptr_file =fopen("input.hnrl", "r");
 
 	node *current_node = root;
 
