@@ -157,7 +157,7 @@ void computeNodeToHtml (node *root, int level) {
 		}
 
 		else {
-			
+
 			// make sure all children have content
 			child = current_node->first_child;
 			while (child != NULL) {
@@ -393,7 +393,6 @@ int main(int argc, char **argv) {
 	int parallel = 1;
 
 	if (parallel == 1) {
-
 
 		computeOutputInParallel(root);
 
