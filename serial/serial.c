@@ -9,7 +9,6 @@ typedef struct node {
 	char class[50];
 	char element[50];
 	char id[50];
-	char content[50];
 	struct node *parent;
 	struct node *first_child;
 	struct node *right_sibling;
@@ -44,9 +43,6 @@ void printBeginningNode (node *current_node, int level) {
 
 	int i;
 
-	// printf("parent address is %p\n", current_node->parent);
-	// printf("node address is %p\n", current_node);
-
 	// Indentation
 	for (i = 0; i < level; i++) {
 		printf("\t");
@@ -54,9 +50,6 @@ void printBeginningNode (node *current_node, int level) {
 
 	//Node
 	printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-	// printf("child address is %p\n", current_node->first_child );
-	// printf("sibling address is %p\n", current_node->right_sibling );
-	// printf("\n");
 
 }
 
@@ -81,10 +74,8 @@ void printTree (node *root) {
 	node *current_node = root, temp;
 	
 	printBeginningNode(current_node, level);
-	// printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
 
-	while (1) {
-
+	do {
 
 		if (current_node->first_child != NULL) {
 			current_node = current_node->first_child;
@@ -95,11 +86,6 @@ void printTree (node *root) {
 			current_node = current_node->right_sibling;
 			printBeginningNode(current_node, level);
 		}
-
-		else if (current_node->parent == NULL) {
-			break;
-		}
-
 		else {
 			current_node = current_node->parent;
 			current_node->first_child = NULL;
@@ -107,7 +93,7 @@ void printTree (node *root) {
 			printEndNode(current_node, level);
 		}
 
-	}
+	} while (current_node->parent != NULL);
 }
 
 
@@ -119,9 +105,6 @@ int main() {
 
 	node *root = malloc(sizeof(node));
 	node *current_node = root;
-	node *parent_node = NULL;
-
-
 
 	if (!ptr_file) 
 		return 1;
