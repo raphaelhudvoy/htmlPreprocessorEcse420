@@ -80,6 +80,9 @@ void printByDepth(int depth, int branch,int cur_depth) {
     	
     	printf("%s</%s>\n",tabs,elem);
     	fprintf(output, "%s</%s>\n",tabs,elem);
+    	if(randomBranching == (i+1))
     	fprintf(input,"%s}\n",tabs);
+    	else
+    	fprintf(input,"%s},\n",tabs);
     }
 }
