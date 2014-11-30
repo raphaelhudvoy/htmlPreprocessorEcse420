@@ -39,33 +39,36 @@ void parseNode (struct node *node, struct node *parent, char *string) {
 		}
 }
 
-void printBeginningNode (node *current_node, int level) {
+void printBeginningNode (node *current_node, int level,FILE *file) {
 
 	int i;
 
 	// Indentation
 	for (i = 0; i < level; i++) {
 		printf("\t");
+		fprintf(file, "\t");
 	}
 
 	//Node
 	printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-
+	fprintf(file,"<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
 }
 
-void printEndNode (node *current_node, int level) {
+void printEndNode (node *current_node, int level,FILE *file) {
 
 	int i;
 
 	// Indentation
 	for (i = 0; i < level; i++) {
 		printf("\t");
+		fprintf(file, "\t");
 	}
 
 	printf("</%s>\n", current_node->element);
+	fprintf(file,"</%s>\n", current_node->element);
 }
 
-void printTree (node *root) {
+void printTree (node *root, FILE *file) {
 
 	printf("root address is %p\n", root);
 	printf("root parent address %p\n", root->parent);
@@ -73,24 +76,24 @@ void printTree (node *root) {
 	int level = 0, i = 0;
 	node *current_node = root, temp;
 	
-	printBeginningNode(current_node, level);
+	printBeginningNode(current_node, level,file);
 
 	do {
 
 		if (current_node->first_child != NULL) {
 			current_node = current_node->first_child;
-			printBeginningNode(current_node, ++level);
+			printBeginningNode(current_node, ++level,file);
 		}
 
 		else if (current_node->right_sibling != NULL) {
 			current_node = current_node->right_sibling;
-			printBeginningNode(current_node, level);
+			printBeginningNode(current_node, level,file);
 		}
 		else {
 			current_node = current_node->parent;
 			current_node->first_child = NULL;
 			level--;
-			printEndNode(current_node, level);
+			printEndNode(current_node, level,file);
 		}
 
 	} while (current_node->parent != NULL);
@@ -166,8 +169,9 @@ int main() {
 
     fclose(ptr_file);
 
-    printTree(root);
-
+    
+    FILE *out_file =fopen("output_serial.html", "w");
+    printTree(root,out_file);
 
 	return  0;
 

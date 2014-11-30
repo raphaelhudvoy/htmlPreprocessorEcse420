@@ -57,19 +57,6 @@ void parseNode (struct node *node, struct node *parent, char *string) {
 		}
 }
 
-void printBeginningNode (node *current_node, int level) {
-
-	int i;
-
-	// Indentation
-	for (i = 0; i < level; i++) {
-		printf("\t");
-	}
-
-	//Node
-	printf("<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-
-}
 
 void computeBeginningNode (char* result, node *current_node, int level) {
 	char element[100];
@@ -116,18 +103,6 @@ void computeBeginningNode (char* result, node *current_node, int level) {
 
 
 } 
-
-void printEndNode (node *current_node, int level) {
-
-	int i;
-
-	// Indentation
-	for (i = 0; i < level; i++) {
-		printf("\t");
-	}
-
-	printf("</%s>\n", current_node->element);
-}
 
 void computeNodeToHtml (node *root, int level) {
 
@@ -209,42 +184,6 @@ void computeNodeToHtml (node *root, int level) {
 	root->parent = parent_node;
 }
 
-void printTree (node *root) {
-
-	printCount++;
-
-	printf("root address is %p\n", root);
-	printf("root parent address %p\n", root->parent);
-
-	int level = 0, i = 0;
-	node *current_node = root, temp;
-	node *parent_node = current_node->parent;
-
-	current_node->parent = NULL;
-	
-	printBeginningNode(current_node, level);
-
-	do {
-
-		if (current_node->first_child != NULL && current_node->first_child->printed != printCount) {
-			current_node = current_node->first_child;
-			printBeginningNode(current_node, ++level);
-		}
-
-		else if (current_node->right_sibling != NULL) {
-			current_node = current_node->right_sibling;
-			printBeginningNode(current_node, level);
-		}
-		else {
-			current_node = current_node->parent;
-			current_node->first_child->printed = printCount;
-			printEndNode(current_node, --level);
-		}
-
-	} while (current_node->parent != NULL);
-
-	current_node->parent = parent_node;
-}
 
 void buildTree (struct node *root) {
 
@@ -383,6 +322,71 @@ void computeOutputInParallel (struct node *root) {
 
 }
 
+/* 
+*********SERIAL COMPUTATION FUNCTIONS***********
+*/
+
+void printBeginningNode (node *current_node, int level,FILE *file) {
+
+	int i;
+
+	// Indentation
+	for (i = 0; i < level; i++) {
+		fprintf(file, "\t");
+	}
+
+	//Node
+	fprintf(file,"<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+	if (current_node->right_sibling == NULL && current_node->first_child == NULL && current_node->parent != NULL) {
+		for (i = 0; i < level; i++) {
+			fprintf(file, "\t");
+		}
+		fprintf(file,"</%s>\n",current_node->element);
+
+	}
+
+}
+
+void printEndNode (node *current_node, int level,FILE *file) {
+
+	int i;
+
+	// Indentation
+	for (i = 0; i < level; i++) {
+		fprintf(file, "\t");
+	}
+	fprintf(file,"</%s>\n", current_node->element);
+}
+
+void printTree (node *root, FILE *file) {
+
+	int level = 0, i = 0;
+	node *current_node = root, temp;
+	
+	printBeginningNode(current_node, level,file);
+
+	do {
+
+		if (current_node->first_child != NULL) {
+			current_node = current_node->first_child;
+			printBeginningNode(current_node, ++level,file);
+		}
+
+		else if (current_node->right_sibling != NULL) {
+			current_node = current_node->right_sibling;
+			printBeginningNode(current_node, level,file);
+		}
+		else {
+			current_node = current_node->parent;
+			current_node->first_child = NULL;
+			level--;
+			printEndNode(current_node, level,file);
+		}
+
+	} while (current_node->parent != NULL);
+}
+
+
 int main(int argc, char **argv) {
 
 
@@ -390,7 +394,7 @@ int main(int argc, char **argv) {
 	node *root = malloc(sizeof(node));
 	buildTree(root);
 
-	int parallel = 1;
+	int parallel = 0;
 
 	if (parallel == 1) {
 
@@ -413,7 +417,8 @@ int main(int argc, char **argv) {
 	
 
 	} else {
-		// serial version here
+		output_p = fopen("output_serial.html", "w");
+		printTree(root,output_p);
 	}
 
 	return  0;
