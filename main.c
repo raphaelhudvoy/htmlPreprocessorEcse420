@@ -81,14 +81,31 @@ void computeBeginningNode (char* result, node *current_node, int level) {
 		strcat(result, "\t");
 	}
 
+
+
 	sprintf(element, "<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
 	strcat(result, element);
 
 	// Adding children content
 	while (child != NULL) {
+		printf("child address is %p\n", child);
+		printf("done with node\n");
+		printf("<%s id=\"%s\" class=\"%s\">\n", child->element, child->id, child->class);
+		printf("sibling is %p\n", child->right_sibling);
+		printf("child content is \n");
+		printf("%s\n", child->content);
+
 		strcat(result, child->content);
-		child = child->right_sibling;
+
+		printf("here\n");
+
+		if (child->right_sibling == NULL)
+			break;
+		else 
+			child = child->right_sibling;
 	}
+
+	printf("here\n");
 
 	for (i = 0; i < level; i++) {
 		strcat(result, "\t");
@@ -114,15 +131,24 @@ void printEndNode (node *current_node, int level) {
 
 void computeNodeToHtml (node *root, int level) {
 
-	char parsedString[100000] = {};
+	char parsedString[400000] = {};
 
 	int i = 0;
 	node *current_node = root;
 	node *parent_node = current_node->parent;
+	node *child;
 	int length = 0;
 
 	root->parent = NULL;
-	
+
+	printf("-- compute node --\n");
+	printf("\t<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+	printf("first_child is %p\n", current_node->first_child);
+	printf("right_sibling is %p \n", current_node->right_sibling);
+	printf("level is %d\n", level);
+	printf("first_child content is\n");
+	printf("%s\n", current_node->first_child->content);
+	printf("=========\n");
 	do {
 
 		if (current_node->first_child != NULL && current_node->first_child->content == NULL) {
@@ -130,37 +156,54 @@ void computeNodeToHtml (node *root, int level) {
 			level++;
 		}
 
-		else if (current_node->right_sibling != NULL) {
-			
-			// compute current node before moving to its neighbor
-			computeBeginningNode(parsedString, current_node, level);
-			current_node->content = malloc(strlen(parsedString) + 1);
-			strcpy(current_node->content, parsedString);
-
-			// moving to the neighbor
-			current_node = current_node->right_sibling;
-
-		}
 		else {
+			
+			// make sure all children have content
+			child = current_node->first_child;
+			while (child != NULL) {
+				if (child->content == NULL) {
+					break;
+				} 
+				else 
+					child = child->right_sibling;
+			}
 
-			// compute current node before moving to its parent
-			computeBeginningNode(parsedString, current_node, level);
-			current_node->content = malloc(strlen(parsedString) + 1);
-			strcpy(current_node->content, parsedString);
+			if (child != NULL) 
+				current_node = child;
+			
+			else { // all children have content
+				
+				if (current_node->right_sibling != NULL && current_node != root) {
+			
+					// compute current node before moving to its neighbor
+					computeBeginningNode(parsedString, current_node, level);
+					current_node->content = malloc(strlen(parsedString) + 1);
+					strcpy(current_node->content, parsedString);
 
+					// moving to the neighbor
+					current_node = current_node->right_sibling;
 
-			current_node = current_node->parent;
-			level--;
+				}
+				else if (current_node->parent != NULL) {
+
+					// compute current node before moving to its parent
+					computeBeginningNode(parsedString, current_node, level);
+					current_node->content = malloc(strlen(parsedString) + 1);
+					strcpy(current_node->content, parsedString);
+
+					current_node = current_node->parent;
+					level--;
+				}
+			}
 		}
 
 	} while (current_node->parent != NULL);
-
-
 
 	// compute the root
 	computeBeginningNode(parsedString, current_node, level);
 	current_node->content = malloc(strlen(parsedString) + 1);
 	strcpy(current_node->content, parsedString);
+
 	
 
 	root->parent = parent_node;
@@ -256,7 +299,7 @@ void computeOutputInParallel (struct node *root) {
 	node *current_node = root;
 	int workByProcessor = 8;
 	int i, level = 0;
-	char parsedString[10000];
+	char parsedString[100000];
 
 	while(1) {
 
@@ -288,7 +331,14 @@ void computeOutputInParallel (struct node *root) {
 				current_node->count++; //adding 1 for parent node
 
 				if (current_node->count >= workByProcessor || current_node->parent == NULL) {
-					
+
+					if (current_node->parent == NULL)
+						printf("root reached\n");
+
+					printf("Parallizing --------\n");
+					printf("\t<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+					printf("number of child %d\n", current_node->numberOfChild);
+					printf("----------------------\n");
 					//need to parallelize the tree
 					#pragma omp parallel num_threads(current_node->numberOfChild)
 					{
@@ -302,16 +352,12 @@ void computeOutputInParallel (struct node *root) {
 						}
 						
 
-						if (current_child != NULL) {
+						if (current_child != NULL && current_child->content == NULL) {
 							// Get thread number
 							// printf("\t<%s id=\"%s\" class=\"%s\">\n", current_child->element, current_child->id, current_child->class);
-							if (current_child->content == NULL)
-								computeNodeToHtml(current_child, level + 1);
+							computeNodeToHtml(current_child, level + 1);
 							// printf("%s\n", current_child->content);
 						}
-
-						else 
-							printf("Error: child is null\n");
 
 					}
 					
@@ -321,8 +367,6 @@ void computeOutputInParallel (struct node *root) {
 					strcpy(current_node->content, parsedString);
 
 					current_node->count = 1;
-					// printTree(current_node);
-					// printf("%s\n", current_node->content);
 
 					if (current_node->parent == NULL) {
 						break;
@@ -334,13 +378,15 @@ void computeOutputInParallel (struct node *root) {
 		}
 	}
 
-	printf("%s\n", current_node->content);
+
 	
 
 }
 
 int main(int argc, char **argv) {
 
+
+	FILE *output_p;
 	node *root = malloc(sizeof(node));
 	buildTree(root);
 
@@ -350,6 +396,21 @@ int main(int argc, char **argv) {
 
 
 		computeOutputInParallel(root);
+
+		// Print content to a file
+		if (root->content != NULL) {
+			output_p = fopen("output_parallel.html", "w");
+
+			if (output_p != NULL) {
+				fputs(root->content, output_p);
+				fclose(output_p);
+			} 
+			else
+				printf("Unable to open the output file\n");
+		}
+
+		else 
+			printf("Error: no content\n");
 	
 
 	} else {
