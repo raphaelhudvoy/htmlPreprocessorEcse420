@@ -40,41 +40,49 @@ int main ( int argc, char *argv[] )
 
     int branchingFactor = atoi(argv[1]);
     int depth = atoi(argv[2]);
-    printf("<body>\n");
+    
+    fprintf(input,"#root {\n");
+	fprintf(output,"<div id=\"root\">\n");
     printByDepth(depth,branchingFactor,0);
-    printf("</body>");
+     fprintf(input,"}\n");
+     fprintf(output,"</div>\n");
+     fclose(input);
+     fclose(output);
+  
 }
 void printByDepth(int depth, int branch,int cur_depth) {
 	int randomBranching = rand()%branch +1 ;
-	
+	int k,i;
 
 	char *tabs = malloc(sizeof(char)*(cur_depth+1));
-	for(int k=0; k<cur_depth;k++)
+	for(k=0; k<cur_depth;k++)
 		tabs[k]='\t';
+
 	tabs[cur_depth] = '\0';
+
 	if(depth==cur_depth) {
 		fprintf(input,"%s .inner-class\n",tabs);
-		fprintf(output,"%s <div class=\"inner-class\"> \n %s</div> ", tabs,tabs);
+		fprintf(output,"%s <div class=\"inner-class\"> \n %s</div> \n", tabs,tabs);
 		return;
 	}
-
-	for(int i=0; i<randomBranching; i++) {
+	
+	for(i=0; i<randomBranching; i++) {
 		
-		char *elem = types[rand()%6];
-		char *attr;
-		char *attr_input;
+		char *elem = types[0];
+		char *attr = malloc(sizeof(char)*100);
+		char *attr_input = malloc(sizeof(char)*100);
 		if(rand()%2 == 0)
 		{
-			 sprintf(attr, "class=testclass_%d", cur_depth);
-			 sprintf(attr_input,".testclass_%d", cur_depth);
+			 sprintf(attr, "class=\"testclass_%d\" \0", cur_depth);
+			 sprintf(attr_input,".testclass_%d \0", cur_depth);
 		}
 		else {
 
-			 sprintf(attr, "id=testid_%d", cur_id);
+			 sprintf(attr, "id=\"testid_%d\"", cur_id);
 			 sprintf(attr_input,"#testid_%d", cur_id);
 			 cur_id++;
 		}
-
+		
 		printf("%s<%s %s>\n",tabs,elem,attr);
 		fprintf(output, "%s<%s %s>\n",tabs,elem,attr);
 		fprintf(input, "%s %s {\n",tabs, attr_input);
