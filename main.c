@@ -1,6 +1,7 @@
 #include <stdio.h>  
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <omp.h>
 
 //compile with -> /usr/local/bin/gcc -fopenmp main.c -o test
@@ -68,6 +69,7 @@ void computeBeginningNode (char* result, node *current_node, int level) {
 		strcat(result, "\t");
 	}
 
+	// printf("Computing <%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
 
 
 	sprintf(element, "<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
@@ -75,24 +77,28 @@ void computeBeginningNode (char* result, node *current_node, int level) {
 
 	// Adding children content
 	while (child != NULL) {
-		printf("child address is %p\n", child);
-		printf("done with node\n");
-		printf("<%s id=\"%s\" class=\"%s\">\n", child->element, child->id, child->class);
-		printf("sibling is %p\n", child->right_sibling);
-		printf("child content is \n");
-		printf("%s\n", child->content);
+		// printf("child address is %p\n", child);
+		// printf("done with node\n");
+		// printf("<%s id=\"%s\" class=\"%s\">\n", child->element, child->id, child->class);
+		// printf("sibling is %p\n", child->right_sibling);
+		// printf("child content is \n");
+		// printf("%s\n", child->content);
+		// if (child->content == NULL){
+		// 	printf("child content is null\n");
+		// 	printf("<%s id=\"%s\" class=\"%s\">\n", child->element, child->id, child->class);
+		// } else {
+		// 	printf("child has content\n");
+		// 	// printf("%s\n", result);
+		// }
 
 		strcat(result, child->content);
+		free(child->content);
 
-		printf("here\n");
-
-		if (child->right_sibling == NULL)
-			break;
-		else 
-			child = child->right_sibling;
+		// printf("here\n");
+		child = child->right_sibling;
 	}
 
-	printf("here\n");
+	// printf("here\n");
 
 	for (i = 0; i < level; i++) {
 		strcat(result, "\t");
@@ -106,7 +112,7 @@ void computeBeginningNode (char* result, node *current_node, int level) {
 
 void computeNodeToHtml (node *root, int level) {
 
-	char parsedString[400000] = {};
+	char parsedString[521404] = {};
 
 	int i = 0;
 	node *current_node = root;
@@ -116,14 +122,14 @@ void computeNodeToHtml (node *root, int level) {
 
 	root->parent = NULL;
 
-	printf("-- compute node --\n");
-	printf("\t<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-	printf("first_child is %p\n", current_node->first_child);
-	printf("right_sibling is %p \n", current_node->right_sibling);
-	printf("level is %d\n", level);
-	printf("first_child content is\n");
-	printf("%s\n", current_node->first_child->content);
-	printf("=========\n");
+	// printf("-- compute node --\n");
+	// printf("\t<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+	// printf("first_child is %p\n", current_node->first_child);
+	// printf("right_sibling is %p \n", current_node->right_sibling);
+	// printf("level is %d\n", level);
+	// printf("first_child content is\n");
+	// printf("%s\n", current_node->first_child->content);
+	// printf("=========\n");
 	do {
 
 		if (current_node->first_child != NULL && current_node->first_child->content == NULL) {
@@ -182,6 +188,8 @@ void computeNodeToHtml (node *root, int level) {
 	
 
 	root->parent = parent_node;
+
+	// printf("------done with node computation----------\n");
 }
 
 
@@ -236,9 +244,9 @@ void buildTree (struct node *root) {
 void computeOutputInParallel (struct node *root) {
 
 	node *current_node = root;
-	int workByProcessor = 8;
-	int i, level = 0;
-	char parsedString[100000];
+	int workByProcessor = 1800;
+	int i,j, level = 0;
+	char parsedString[700000] = {};
 
 	while(1) {
 
@@ -272,15 +280,16 @@ void computeOutputInParallel (struct node *root) {
 				if (current_node->count >= workByProcessor || current_node->parent == NULL) {
 
 					if (current_node->parent == NULL)
-						printf("root reached\n");
+						printf("root reached %d\n", current_node->count);
 
-					printf("Parallizing --------\n");
-					printf("\t<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
-					printf("number of child %d\n", current_node->numberOfChild);
-					printf("----------------------\n");
+					// printf("Parallizing --------\n");
+					// printf("\t<%s id=\"%s\" class=\"%s\">\n", current_node->element, current_node->id, current_node->class);
+					// printf("number of child %d\n", current_node->numberOfChild);
+					// printf("----------------------\n");
 					//need to parallelize the tree
 					#pragma omp parallel num_threads(current_node->numberOfChild)
 					{
+						// printf("j = %d\n", j);
 
 						node *current_child = current_node->first_child;
 						int threadID = omp_get_thread_num();
@@ -290,10 +299,13 @@ void computeOutputInParallel (struct node *root) {
 							current_child = current_child->right_sibling; 
 						}
 						
+						// for (i = 0; i < j; i++) {
+						// 	// printf("i = %d, j = %d\t<%s id=\"%s\" class=\"%s\">\n", i,j,current_child->element, current_child->id, current_child->class);
+						// 	current_child = current_child->right_sibling; 
+						// }
 
 						if (current_child != NULL && current_child->content == NULL) {
 							// Get thread number
-							// printf("\t<%s id=\"%s\" class=\"%s\">\n", current_child->element, current_child->id, current_child->class);
 							computeNodeToHtml(current_child, level + 1);
 							// printf("%s\n", current_child->content);
 						}
@@ -386,6 +398,15 @@ void printTree (node *root, FILE *file) {
 	} while (current_node->parent != NULL);
 }
 
+double elapse_time (struct timeval start) {
+	
+	struct timeval end;
+	gettimeofday(&end, NULL);
+	
+	return (end.tv_sec + (((double) end.tv_usec)/1e6)) - (start.tv_sec + (((double) start.tv_usec)/1e6));
+	
+}
+
 
 int main(int argc, char **argv) {
 
@@ -394,9 +415,16 @@ int main(int argc, char **argv) {
 	node *root = malloc(sizeof(node));
 	buildTree(root);
 
-	int parallel = 0;
+	struct timeval start, end; 
+	struct timeval total_start, total_end; 
+	struct timeval communication_start, communication_end;
+	double processing_time = 0, communication_time = 0;
+
+	int parallel = 1;
+	gettimeofday(&total_start, NULL);
 
 	if (parallel == 1) {
+
 
 		computeOutputInParallel(root);
 
@@ -407,6 +435,9 @@ int main(int argc, char **argv) {
 			if (output_p != NULL) {
 				fputs(root->content, output_p);
 				fclose(output_p);
+
+				processing_time = elapse_time(total_start);
+				printf("%f microseconds\n", processing_time);
 			} 
 			else
 				printf("Unable to open the output file\n");
@@ -419,6 +450,8 @@ int main(int argc, char **argv) {
 	} else {
 		output_p = fopen("output_serial.html", "w");
 		printTree(root,output_p);
+		processing_time = elapse_time(total_start);
+		printf("%f microseconds\n", processing_time);
 	}
 
 	return  0;
