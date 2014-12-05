@@ -412,7 +412,7 @@ int main(int argc, char **argv) {
 
 	struct timeval start, end; 
 	struct timeval total_start, total_end; 
-	double processing_time = 0;
+	double total_time = 0;
 
 	int parallel = 1;
 	gettimeofday(&total_start, NULL);
@@ -429,8 +429,8 @@ int main(int argc, char **argv) {
 			if (output_p != NULL) {
 				fputs(root->content, output_p);
 				fclose(output_p);
-				processing_time = elapse_time(total_start);
-				printf("%f microseconds\n", processing_time);
+				total_time = elapse_time(total_start);
+				printf("Total time: %f microseconds\n", total_time);
 			} 
 			else
 				printf("Unable to open the output file\n");
@@ -443,8 +443,8 @@ int main(int argc, char **argv) {
 	} else {
 		output_p = fopen("output_serial.html", "w");
 		printTree(root,output_p);
-		processing_time = elapse_time(total_start);
-		printf("%f microseconds\n", processing_time);
+		total_time = elapse_time(total_start);
+		printf("Total time: %f microseconds\n", total_time);
 	}
 
 	return  0;
