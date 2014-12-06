@@ -4,7 +4,7 @@
 #include <sys/time.h>
 #include <omp.h>
 
-#define WORK_PER_PROCESSOR 10;
+#define WORK_PER_PROCESSOR 1000
 
 //compile with -> /usr/local/bin/gcc -fopenmp main.c -o test
 int printCount = 0;
@@ -248,7 +248,6 @@ void computeOutputInParallel (struct node *root) {
 	char parsedString[700000] = {};
 
 	struct timeval total; 
-	double total_time = 0;
 	char buf[500000] = {};
 
 	gettimeofday(&total, NULL);
@@ -283,10 +282,9 @@ void computeOutputInParallel (struct node *root) {
 				current_node->count++; //adding 1 for parent node
 
 				if (current_node->count >= workByProcessor || current_node->parent == NULL) {
-
-					if (current_node->parent == NULL)
-						printf("root reached %d\n", current_node->count);
 		
+					// if (current_node->parent == NULL)
+					// 	printf("T-node %d\n", current_node->count);
 
 					//need to parallelize the tree
 					#pragma omp parallel num_threads(current_node->numberOfChild) shared(processing_time) private(buf, i)
@@ -327,11 +325,6 @@ void computeOutputInParallel (struct node *root) {
 		}
 
 	}
-
-	total_time += elapse_time(total);
-	printf("Total Processing Time = %f\n", processing_time);
-	printf("Total communication Time = %f\n", total_time - processing_time);
-
 	
 
 }
@@ -410,15 +403,18 @@ int main(int argc, char **argv) {
 	node *root = malloc(sizeof(node));
 	buildTree(root);
 
-	struct timeval start, end; 
-	struct timeval total_start, total_end; 
-	double total_time = 0;
+	struct timeval total_start;
+	double communication_time = 0, write_time = 0, total_time = 0;
+
 
 	int parallel = 1;
-	gettimeofday(&total_start, NULL);
 
 	if (parallel == 1) {
+		printf("\n-------------------------------------------\n");
+		printf("Parallel version with %d node per processor\n", WORK_PER_PROCESSOR);
+		printf("-------------------------------------------\n");
 
+		gettimeofday(&total_start, NULL);
 
 		computeOutputInParallel(root);
 
@@ -427,10 +423,18 @@ int main(int argc, char **argv) {
 			output_p = fopen("output_parallel.html", "w");
 
 			if (output_p != NULL) {
+
+				write_time = elapse_time(total_start);
+				communication_time =  write_time - processing_time;
 				fputs(root->content, output_p);
 				fclose(output_p);
+
 				total_time = elapse_time(total_start);
-				printf("Total time: %f microseconds\n", total_time);
+				printf("Total communication time  = %f\n", communication_time);
+				printf("Total processing time 	  = %f\n", processing_time);
+				printf("Write to file time        = %f \n", total_time - write_time);
+				printf("                          ------------\n");
+				printf("Total time                  %f\n\n", total_time);
 			} 
 			else
 				printf("Unable to open the output file\n");
@@ -441,10 +445,15 @@ int main(int argc, char **argv) {
 	
 
 	} else {
+
+		printf("\n----------------------\n");
+		printf("Running serial version\n");
+		printf("----------------------\n");
+
+		gettimeofday(&total_start, NULL);
 		output_p = fopen("output_serial.html", "w");
 		printTree(root,output_p);
-		total_time = elapse_time(total_start);
-		printf("Total time: %f microseconds\n", total_time);
+		printf("Total time: %f microseconds\n\n", elapse_time(total_start));
 	}
 
 	return  0;
