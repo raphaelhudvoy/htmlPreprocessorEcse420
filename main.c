@@ -5,7 +5,7 @@
 #include <omp.h>
 
 #define WORK_PER_PROCESSOR 1000
-
+#define PARALLEL 1
 //compile with -> /usr/local/bin/gcc -fopenmp main.c -o test
 int printCount = 0;
 double processing_time = 0;
@@ -111,6 +111,7 @@ void computeBeginningNode (char* result, node *current_node, int level, int thre
 	gettimeofday(&start, NULL);
 	sprintf(element, "</%s>\n", current_node->element);
 	strcat(result, element);
+	
 	if (threadID == 0) {
 		processing_time += elapse_time(start);
 	}
@@ -350,6 +351,7 @@ void printBeginningNode (node *current_node, int level,FILE *file) {
 		}
 		fprintf(file,"</%s>\n",current_node->element);
 
+
 	}
 
 }
@@ -362,6 +364,7 @@ void printEndNode (node *current_node, int level,FILE *file) {
 	for (i = 0; i < level; i++) {
 		fprintf(file, "\t");
 	}
+
 	fprintf(file,"</%s>\n", current_node->element);
 }
 
@@ -407,7 +410,7 @@ int main(int argc, char **argv) {
 	double communication_time = 0, write_time = 0, total_time = 0;
 
 
-	int parallel = 1;
+	int parallel = PARALLEL;
 
 	if (parallel == 1) {
 		printf("\n-------------------------------------------\n");
